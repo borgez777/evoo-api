@@ -5,18 +5,20 @@ import { emailQueue } from './queue.js';
 
 dotenv.config();
 
-// Recria a string de conexão a partir das variáveis de ambiente para o worker
-const connection = {
+// Conexão com o Redis 
+const connectionOptions = {
   host: new URL(process.env.REDIS_URL).hostname,
   port: new URL(process.env.REDIS_URL).port,
   username: new URL(process.env.REDIS_URL).username,
   password: new URL(process.env.REDIS_URL).password,
-
-  tls: { rejectUnauthorized: false }
 };
 
+if (process.env.NODE_ENV !== 'production') {
+  connectionOptions.tls = {
+    rejectUnauthorized: false
+  };
+}
 
-// Configuração do Nodemailer
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -25,10 +27,9 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Criando o Worker
 const worker = new Worker(emailQueue.name, async job => {
     console.log(`Processando job #${job.id} do tipo ${job.name}...`);
-
+    
     const { to, subject, message } = job.data;
     
     try {
@@ -41,10 +42,9 @@ const worker = new Worker(emailQueue.name, async job => {
         console.log(`✅ Email para ${to} enviado com sucesso!`);
     } catch (error) {
         console.error(`❌ Falha ao enviar email para ${to}:`, error);
-        
         throw error;
     }
-}, { connection });
+}, { connection: connectionOptions }); 
 
 console.log('🚀 Worker de email iniciado e ouvindo a fila...');
 
