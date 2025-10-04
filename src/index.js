@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { createUser, getUserByApiKey, logEmail, getEmailCount, getEmailHistory } from './database.js';
+import { emailQueue } from './queue.js'; // NOVO: Importa nossa fila
 
 dotenv.config();
 
@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Middleware pra validar API Key
+// Middleware pra validar API Key (sem alterações)
 const validateApiKey = async (req, res, next) => {
   const apiKey = req.headers['x-api-key'];
   
@@ -30,7 +30,7 @@ const validateApiKey = async (req, res, next) => {
   next();
 };
 
-// Rate limiting
+// Rate limiting (sem alterações)
 const checkRateLimit = (req, res, next) => {
   const count = getEmailCount(req.user.id, 24);
   const limit = 100;
@@ -44,19 +44,13 @@ const checkRateLimit = (req, res, next) => {
   next();
 };
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+// REMOVIDO: A configuração do nodemailer foi movida para o worker.js
 
 app.get('/', (req, res) => {
   res.json({ message: 'Evoo API v1.0' });
 });
 
-// Cadastro
+// Endpoint de Cadastro (sem alterações)
 app.post('/signup', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -81,7 +75,7 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-// Histórico
+// Endpoint de Histórico (sem alterações)
 app.get('/history', validateApiKey, (req, res) => {
   const history = getEmailHistory(req.user.id);
   const count = getEmailCount(req.user.id, 24);
@@ -93,7 +87,7 @@ app.get('/history', validateApiKey, (req, res) => {
   });
 });
 
-// Enviar email (com rate limiting)
+// Endpoint de Enviar Email (ATUALIZADO PARA USAR A FILA)
 app.post('/send-email', validateApiKey, checkRateLimit, async (req, res) => {
   try {
     const { to, subject, message } = req.body;
@@ -102,22 +96,29 @@ app.post('/send-email', validateApiKey, checkRateLimit, async (req, res) => {
       return res.status(400).json({ error: 'to, subject e message são obrigatórios' });
     }
     
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+    // Prepara os dados para o job que será processado pelo worker
+    const jobData = {
       to,
       subject,
-      text: message
-    });
+      message,
+      userId: req.user.id
+    };
+
+    // Adiciona o trabalho (job) à fila em vez de enviar o email diretamente
+    await emailQueue.add('sendEmailJob', jobData);
     
+    // Registra o email no log para o rate limiting funcionar corretamente
     logEmail(req.user.id, to, subject);
-    
-    res.json({ 
+
+    // Responde IMEDIATAMENTE para o usuário com status 202 (Aceito)
+    res.status(202).json({ 
       success: true, 
-      message: 'Email enviado!',
-      id: Date.now()
+      message: 'Email enfileirado para envio!',
     });
+      
   } catch (error) {
-    res.status(500).json({ error: 'Falha ao enviar email' });
+    console.error('Erro ao enfileirar email:', error);
+    res.status(500).json({ error: 'Falha ao enfileirar email' });
   }
 });
 
