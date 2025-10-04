@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "start": "node src/index.js",
+    "start": "concurrently \"node src/index.js\" \"node src/worker.js\"",
     "dev": "nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -19,6 +19,7 @@
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.4.1",
     "bullmq": "^5.59.0",
+    "concurrently": "^9.2.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
