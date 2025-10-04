@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// O nome da fila. Pode ser qualquer string.
 const QUEUE_NAME = 'emailQueue';
 
 // Conexão com o Redis
@@ -16,5 +15,4 @@ const connection = {
   tls: { rejectUnauthorized: false }
 };
 
-// Exportamos a instância da fila para ser usada em outros lugares
 export const emailQueue = new Queue(QUEUE_NAME, { connection });

@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 
 const db = new Database('evoo.db');
 
-// Criar tabela de usuários
+// tabela de usuários
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
@@ -15,7 +15,7 @@ db.exec(`
   )
 `);
 
-// Criar tabela de logs de emails
+// tabela de logs de emails
 db.exec(`
   CREATE TABLE IF NOT EXISTS email_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

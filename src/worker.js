@@ -1,7 +1,7 @@
 import { Worker } from 'bullmq';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import { emailQueue } from './queue.js'; // A gente só precisa da instância para pegar o nome e a conexão
+import { emailQueue } from './queue.js'; 
 
 dotenv.config();
 
@@ -16,7 +16,7 @@ const connection = {
 };
 
 
-// Configuração do Nodemailer (a mesma que você tinha no index.js)
+// Configuração do Nodemailer
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -28,8 +28,7 @@ const transporter = nodemailer.createTransport({
 // Criando o Worker
 const worker = new Worker(emailQueue.name, async job => {
     console.log(`Processando job #${job.id} do tipo ${job.name}...`);
-    
-    // Os dados que passamos no .add() estão em job.data
+
     const { to, subject, message } = job.data;
     
     try {
@@ -42,8 +41,7 @@ const worker = new Worker(emailQueue.name, async job => {
         console.log(`✅ Email para ${to} enviado com sucesso!`);
     } catch (error) {
         console.error(`❌ Falha ao enviar email para ${to}:`, error);
-        // Lançar o erro faz com que a BullMQ saiba que o job falhou
-        // e ela pode tentar novamente mais tarde, se configurada para isso.
+        
         throw error;
     }
 }, { connection });

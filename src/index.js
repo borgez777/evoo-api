@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createUser, getUserByApiKey, logEmail, getEmailCount, getEmailHistory } from './database.js';
-import { emailQueue } from './queue.js'; // NOVO: Importa nossa fila
+import { emailQueue } from './queue.js'; 
 
 dotenv.config();
 
@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Middleware pra validar API Key (sem alterações)
+// Middleware pra validar API Key 
 const validateApiKey = async (req, res, next) => {
   const apiKey = req.headers['x-api-key'];
   
@@ -30,7 +30,7 @@ const validateApiKey = async (req, res, next) => {
   next();
 };
 
-// Rate limiting (sem alterações)
+// Rate limiting 
 const checkRateLimit = (req, res, next) => {
   const count = getEmailCount(req.user.id, 24);
   const limit = 100;
@@ -44,13 +44,11 @@ const checkRateLimit = (req, res, next) => {
   next();
 };
 
-// REMOVIDO: A configuração do nodemailer foi movida para o worker.js
-
 app.get('/', (req, res) => {
   res.json({ message: 'Evoo API v1.0' });
 });
 
-// Endpoint de Cadastro (sem alterações)
+// Endpoint de Cadastro 
 app.post('/signup', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -75,7 +73,7 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-// Endpoint de Histórico (sem alterações)
+// Endpoint de Histórico 
 app.get('/history', validateApiKey, (req, res) => {
   const history = getEmailHistory(req.user.id);
   const count = getEmailCount(req.user.id, 24);
@@ -87,7 +85,7 @@ app.get('/history', validateApiKey, (req, res) => {
   });
 });
 
-// Endpoint de Enviar Email (ATUALIZADO PARA USAR A FILA)
+// Endpoint de Enviar Email 
 app.post('/send-email', validateApiKey, checkRateLimit, async (req, res) => {
   try {
     const { to, subject, message } = req.body;
@@ -110,7 +108,6 @@ app.post('/send-email', validateApiKey, checkRateLimit, async (req, res) => {
     // Registra o email no log para o rate limiting funcionar corretamente
     logEmail(req.user.id, to, subject);
 
-    // Responde IMEDIATAMENTE para o usuário com status 202 (Aceito)
     res.status(202).json({ 
       success: true, 
       message: 'Email enfileirado para envio!',
