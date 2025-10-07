@@ -1,8 +1,8 @@
 # Evoo API 🚀
 
-API de notificação unificada focada no mercado brasileiro, projetada para simplificar o envio de mensagens através de múltiplos canais como Email, WhatsApp e SMS com uma única integração.
+Esta é uma API de notificação unificada que eu criei do zero, com foco no mercado brasileiro. Meu objetivo é simplificar o envio de mensagens através de múltiplos canais como Email, WhatsApp e SMS, permitindo que desenvolvedores e pequenos negócios integrem tudo em um só lugar.
 
-Este projeto está sendo construído e documentado publicamente.
+Este projeto está sendo construído e documentado publicamente como parte da minha jornada de desenvolvimento.
 
 ## ✨ Features (Funcionalidades)
 
@@ -15,14 +15,15 @@ Este projeto está sendo construído e documentado publicamente.
 ## 🛠️ Tech Stack (Tecnologias Utilizadas)
 
 - **Backend:** Node.js, Express.js
-- **Banco de Dados:** better-sqlite3 (Desenvolvimento)
+- **Banco de Dados (Dev):** better-sqlite3
 - **Fila de Tarefas:** Redis, BullMQ
-- **Envio de Email:** Nodemailer
+- **Envio de Email:** Google Apps Script (atuando como um proxy para o Gmail)
+- **Gerenciador de Processos:** Concurrently
 - **Hospedagem:** Render
 
-## Começando
+## 🏁 Começando (Guia para Desenvolvedores)
 
-Siga os passos abaixo para configurar e rodar o projeto localmente.
+Siga os passos abaixo para configurar e rodar o projeto localmente na sua máquina.
 
 ### Pré-requisitos
 
@@ -51,29 +52,22 @@ Siga os passos abaixo para configurar e rodar o projeto localmente.
 2.  Adicione as seguintes variáveis de ambiente, substituindo com seus próprios valores:
     ```env
     PORT=3000
-    EMAIL_USER=seu_email_gmail@gmail.com
-    EMAIL_PASS=sua_senha_de_app_do_google
     REDIS_URL=sua_url_de_conexao_externa_do_redis
+    APPS_SCRIPT_URL=a_url_do_seu_app_da_web_criado_no_google
     ```
 
 ### Rodando a Aplicação
 
-Para rodar a aplicação completa, você precisa de **dois terminais** abertos na pasta do projeto.
+Para rodar a aplicação completa (API e Worker), basta um único comando graças ao Concurrently:
 
-1.  **Terminal 1 (Inicia o servidor da API):**
-    ```bash
-    npm run dev
-    ```
-2.  **Terminal 2 (Inicia o Worker que processa a fila):**
-    ```bash
-    node src/worker.js
-    ```
-A API estará disponível em `http://localhost:3000`.
+```bash
+npm run dev
+```
+Isso iniciará ambos os processos. A API estará disponível em `http://localhost:3000`.
 
 ## 📚 Documentação da API
 
-URL Base (Local): `http://localhost:3000`
-URL Base (Produção): `https://evoo-api.onrender.com`
+**URL Base (Produção):** `https://evoo-api.onrender.com`
 
 ### Autenticação
 
@@ -97,8 +91,8 @@ Cria um novo usuário e retorna uma API Key para ser usada nas outras chamadas.
   {
     "success": true,
     "message": "Usuário criado com sucesso!",
-    "userId": "1026a87c-3b48-4d00-a80c-517f80fc27c9",
-    "apiKey": "ac919fb2-48c3-48cc-bf7d-bf7ed60289d4"
+    "userId": "...",
+    "apiKey": "..."
   }
   ```
 
@@ -141,12 +135,12 @@ Retorna o histórico de envios e o limite de uso do usuário. **Requer autentica
     "daily_limit": 100,
     "history": [
         {
-            "to_email": "destinatario@exemplo.com",
-            "subject": "Assunto do Email",
-            "sent_at": "2025-10-03 18:55:25"
+            "to_email": "...",
+            "subject": "...",
+            "sent_at": "..."
         }
     ]
   }
   ```
 ---
-Feito por **Daniel Borges**.
+Feito por [Daniel Borges](https://github.com/borgez777).
