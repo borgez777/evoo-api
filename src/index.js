@@ -121,13 +121,13 @@ app.post('/send-email', validateApiKey, checkRateLimit, async (req, res) => {
 
 app.post('/send-whatsapp', validateApiKey, async (req, res) => {
     try {
-        const { to, message } = req.body;
+        const { to, message, delay = 5 } = req.body;
         
         if (!to || !message) {
             return res.status(400).json({ error: 'Os campos "to" e "message" são obrigatórios' });
         }
         
-        const jobData = { to, message };
+        const jobData = { to, message, delay };
 
         await whatsappQueue.add('sendWhatsappJob', jobData);
         

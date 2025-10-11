@@ -5,40 +5,42 @@ import { Worker } from 'bullmq';
 import { whatsappQueue } from './queue.js';
 import { redisConnection } from './redis-connection.js';
 
-let sock;
+const sessionNames = ['session_1', 'session_2'];
+const sockets = new Map(); 
+let currentSocketIndex = 0; 
+
 let worker;
 
-async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+async function connectToWhatsApp(sessionName) {
+    console.log(`[${sessionName}] Iniciando conexão com o WhatsApp...`);
+    const { state, saveCreds } = await useMultiFileAuthState(`auth_${sessionName}`);
 
-    sock = makeWASocket({
+    const sock = makeWASocket({
         auth: state,
         printQRInTerminal: true,
     });
+    
+    sockets.set(sessionName, sock);
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         if(qr) {
+            console.log(`[${sessionName}] --- QR CODE PARA A SESSÃO "${sessionName}" ---`);
             qrcode.generate(qr, { small: true });
-            console.log('[WhatsApp Worker] QR Code gerado. Por favor, escaneie para conectar.');
+            console.log(`[${sessionName}] Escaneie o QR Code para conectar esta sessão.`);
         }
         if(connection === 'close') {
-    
-            if (worker) {
-                worker.close();
-            }
+            sockets.delete(sessionName); 
 
             const shouldReconnect = (lastDisconnect.error instanceof Boom) &&
                                      lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut;
-            console.log('[WhatsApp Worker] Conexão fechada. Motivo:', lastDisconnect.error, '. Reconectando:', shouldReconnect);
+            console.log(`[${sessionName}] Conexão fechada. Motivo:`, lastDisconnect.error, '. Reconectando:', shouldReconnect);
             
             if(shouldReconnect) {
-                connectToWhatsApp();
+                connectToWhatsApp(sessionName);
             }
         } else if(connection === 'open') {
-            console.log('🚀 [WhatsApp Worker] Conexão com o WhatsApp aberta com sucesso!');
-
-            startWorker();
+            console.log(`🚀 [${sessionName}] Conexão com o WhatsApp aberta com sucesso!`);
         }
     });
 
@@ -46,42 +48,60 @@ async function connectToWhatsApp() {
 }
 
 function startWorker() {
-    console.log('🚀 [WhatsApp Worker] Iniciado e ouvindo a fila...');
+    console.log('🚀 [Master Worker] Iniciado e ouvindo a fila de WhatsApp...');
 
     worker = new Worker(whatsappQueue.name, async job => {
-        const { to, message } = job.data;
-        console.log(`[WhatsApp Worker] Processando job #${job.id}: Enviando para ${to}`);
+        const { to, message, delay } = job.data;
+        
+        const activeSessions = Array.from(sockets.keys());
+        if (activeSessions.length === 0) {
+            throw new Error('Nenhuma sessão de WhatsApp está conectada para enviar a mensagem.');
+        }
+
+        const sessionNameToUse = activeSessions[currentSocketIndex];
+        const sock = sockets.get(sessionNameToUse);
+
+        currentSocketIndex = (currentSocketIndex + 1) % activeSessions.length;
+        // ---------------------------------------
+
+        console.log(`[${sessionNameToUse}] Processando job #${job.id}: Enviando para ${to}`);
 
         try {
             let formattedNumber = to.replace(/\D/g, '');
-            if (formattedNumber.length === 13 && formattedNumber.startsWith('55') && formattedNumber[4] === '9') {
-                formattedNumber = formattedNumber.slice(0, 4) + formattedNumber.slice(5);
-            }
+            
             formattedNumber = `${formattedNumber}@s.whatsapp.net`;
 
             const [result] = await sock.onWhatsApp(formattedNumber);
-
             if (!result || !result.exists) {
-                throw new Error(`Número ${to} (${formattedNumber}) não existe no WhatsApp.`);
+                throw new Error(`Número ${to} não existe no WhatsApp.`);
             }
 
             await sock.sendMessage(formattedNumber, { text: message });
             
-            console.log(`✅ [WhatsApp Worker] Mensagem para ${to} enviada com sucesso!`);
+            console.log(`✅ [${sessionNameToUse}] Mensagem para ${to} enviada com sucesso!`);
+
+            const delayInMs = (delay || 0) * 1000;
+            if (delayInMs > 0) {
+                console.log(`[Master Worker] Pausando por ${delay} segundos...`);
+                await new Promise(resolve => setTimeout(resolve, delayInMs));
+            }
         } catch (error) {
-            console.error(`❌ [WhatsApp Worker] Falha ao enviar para ${to}:`, error);
+            console.error(`❌ [${sessionNameToUse}] Falha ao enviar para ${to}:`, error);
             throw error;
         }
     }, { connection: redisConnection });
 
-    worker.on('completed', job => {
-        console.log(`🎉 [WhatsApp Worker] Job #${job.id} concluído com sucesso!`);
-    });
-
-    worker.on('failed', (job, err) => {
-        console.log(`🔥 [WhatsApp Worker] Job #${job.id} falhou com o erro: ${err.message}`);
-    });
 }
 
-// Inicia o processo de conexão
-connectToWhatsApp();
+async function main() {
+
+    for (const sessionName of sessionNames) {
+        await connectToWhatsApp(sessionName);
+        
+        await new Promise(resolve => setTimeout(resolve, 2000)); 
+    }
+    
+    startWorker();
+}
+
+main();
