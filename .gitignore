@@ -3,5 +3,6 @@ node_modules/
 .DS_Store
 evoo.db
 *.db
+/auth_info_baileys
 
 

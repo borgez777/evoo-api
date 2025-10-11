@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createUser, getUserByApiKey, logEmail, getEmailCount, getEmailHistory } from './database.js';
-import { emailQueue } from './queue.js'; 
+import { emailQueue, whatsappQueue } from './queue.js'; 
 
 dotenv.config();
 
@@ -117,6 +117,29 @@ app.post('/send-email', validateApiKey, checkRateLimit, async (req, res) => {
     console.error('Erro ao enfileirar email:', error);
     res.status(500).json({ error: 'Falha ao enfileirar email' });
   }
+});
+
+app.post('/send-whatsapp', validateApiKey, async (req, res) => {
+    try {
+        const { to, message } = req.body;
+        
+        if (!to || !message) {
+            return res.status(400).json({ error: 'Os campos "to" e "message" são obrigatórios' });
+        }
+        
+        const jobData = { to, message };
+
+        await whatsappQueue.add('sendWhatsappJob', jobData);
+        
+        res.status(202).json({ 
+            success: true, 
+            message: 'Mensagem de WhatsApp enfileirada para envio!',
+        });
+
+    } catch (error) {
+        console.error('Erro ao enfileirar WhatsApp:', error);
+        res.status(500).json({ error: 'Falha ao enfileirar mensagem de WhatsApp' });
+    }
 });
 
 app.listen(PORT, () => {

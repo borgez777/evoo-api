@@ -1,21 +1,9 @@
 import { Worker } from 'bullmq';
 import dotenv from 'dotenv';
 import { emailQueue } from './queue.js';
+import { redisConnection } from './redis-connection.js';
 
 dotenv.config();
-
-// Bloco de conexão com o Redis 
-const connectionOptions = {
-  host: new URL(process.env.REDIS_URL).hostname,
-  port: new URL(process.env.REDIS_URL).port,
-  username: new URL(process.env.REDIS_URL).username,
-  password: new URL(process.env.REDIS_URL).password,
-};
-if (process.env.NODE_ENV !== 'production') {
-  connectionOptions.tls = {
-    rejectUnauthorized: false
-  };
-}
 
 const worker = new Worker(emailQueue.name, async job => {
     console.log(`Processando job #${job.id} do tipo ${job.name}...`);
@@ -46,7 +34,8 @@ const worker = new Worker(emailQueue.name, async job => {
         console.error(`❌ Falha ao processar job para ${to}:`, error);
         throw error;
     }
-}, { connection: connectionOptions });
+}, { connection: redisConnection });
+
 
 console.log('🚀 Worker (usando Google Apps Script) iniciado e ouvindo a fila...');
 
